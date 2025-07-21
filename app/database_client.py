@@ -40,7 +40,6 @@ class DatabaseClient():
             autoflush=False,
             bind=self.engine
         )
-        self.model_base.metadata.create_all(bind=self.engine)
         self._is_configured = True
 
     def get_session(self):

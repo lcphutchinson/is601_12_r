@@ -16,7 +16,13 @@ class UserForm(pyd.BaseModel):
 
 class PasswordMixin(pyd.BaseModel):
     """Mixin for password validation"""
-    password: str       = pyd.Field(min_length=6, max_length=128, example="SecurePass123")
+    password: str = pyd.Field(
+        min_length=6,
+        max_length=128,
+        example="SecurePass123",
+        description="Password"
+
+    )
 
     @pyd.model_validator(mode="before")
     @classmethod
@@ -47,4 +53,3 @@ class UserCreate(UserForm, PasswordMixin):
     """Formatted schema for User Create actions"""
 pass
    
-
