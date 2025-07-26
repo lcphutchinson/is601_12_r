@@ -39,8 +39,6 @@ class CalculationForm(pyd.BaseModel):
     @pyd.model_validator(mode='after')
     def validate_inputs(self) -> "CalculationForm":
         """Performs type-specific input validation"""
-        if len(self.inputs) < 2:
-            raise ValueError("Calculation requires at least 2 operands")
         division_types = [
             CalculationType.DIVISION,
             CalculationType.MODULUS,
