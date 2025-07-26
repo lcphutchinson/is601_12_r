@@ -263,6 +263,7 @@ class User(ModelBase):
             access_token=cls.create_access_token({"sub": str(user.id)}),
             refresh_token=cls.create_refresh_token({"sub": str(user.id)}),
             token_type="bearer",
+            expires_at=datetime.utcnow(),
             user=user_record
         )
 

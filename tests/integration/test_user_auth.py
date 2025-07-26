@@ -27,6 +27,7 @@ def test_user_authentication(db_session):
     """Test user authentication and token generation"""
     user_data = generate_user_data()
     user_data['password'] = "TestPass123"
+    user_data['confirm_password'] = "TestPass123"
     user = User.register(db_session, user_data)
     db_session.commit()
 
@@ -46,6 +47,7 @@ def test_email_authentication(db_session):
     """Test user authentication using email"""
     user_data = generate_user_data()
     user_data['password'] = "TestPass123"
+    user_data['confirm_password'] = "TestPass123"
     user = User.register(db_session, user_data)
     db_session.commit()
 
@@ -62,6 +64,7 @@ def test_user_last_login_update(db_session):
     """Test that last_login is updated on authentication"""
     user_data = generate_user_data()
     user_data['password'] = "TestPass123"
+    user_data['confirm_password'] = "TestPass123"
     user = User.register(db_session, user_data)
     db_session.commit()
 
@@ -108,6 +111,7 @@ def test_token_creation_and_validation(db_session):
     """Test token creation and verification"""
     user_data = generate_user_data()
     user_data['password'] = "TestPass123"
+    user_data['confirm_password'] = "TestPass123"
     user = User.register(db_session, user_data)
     db_session.commit()
 

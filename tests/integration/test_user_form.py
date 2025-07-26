@@ -34,16 +34,17 @@ def test_email_constraint():
 
 def test_password_mixin_properties():
     """Validates PasswordMixin object properties and contructor"""
-    data = {"password": "SecurePass123"}
+    data = {"password": "SecurePass123", "confirm_password": "SecurePass123"}
     password_mixin = forms.PasswordMixin(**data)
     assert isinstance(password_mixin, forms.PasswordMixin)
     assert password_mixin.password == "SecurePass123"
+    assert password_mixin.confirm_password == "SecurePass123"
 
 @pytest.mark.parametrize(
     "data, expected",
     [
         ({}, "Password is required"),
-        ({"password": "short"}, "Password must contain at least 6 characters"),
+        ({"password": "short"}, "Password must contain at least 8 characters"),
         ({"password": "securepass123"}, "Password must contain at least one uppercase letter"),
         ({"password": "SECUREPASS123"}, "Password must contain at least one lowercase letter"),
         ({"password": "SecurePass"}, "Password must contain at least one digit")
@@ -58,6 +59,8 @@ def test_password_mixin_properties():
 )
 def test_password_constraints(data: dict[str, str], expected: str):
     """Tests format enforcement on the password field"""
+    if data:
+        data['confirm_password'] = data['password']
     with pytest.raises(ValueError, match=expected):
         forms.PasswordMixin(**data)
 
@@ -69,6 +72,7 @@ def test_user_create_properties():
         "email": "jane.doe@example.com",
         "username": "janedoe",
         "password": "SecurePass123",
+        "confirm_password": "SecurePass123",
     }
     user_create = forms.UserCreate(**data)
     assert isinstance(user_create, forms.UserCreate)
@@ -80,7 +84,11 @@ def test_user_create_properties():
 
 def test_user_login_form_properties():
     """Validates the UserLoginForm schema's properties and constructor"""
-    data = { "username": "janedoe", "password": "SecurePass123" }
+    data = { 
+        "username": "janedoe",
+        "password": "SecurePass123",
+        "confirm_password": "SecurePass123"
+    }
     login_form = forms.UserLoginForm(**data)
     assert isinstance(login_form, forms.UserLoginForm)
     assert login_form.username == "janedoe"
@@ -103,3 +111,41 @@ def test_login_username_constraints(username: str):
     with pytest.raises(ValidationError):
         forms.UserLoginForm(**data)
 
+def test_user_update_properties():
+    """Validates the UserUpdate schema's properties and constructor"""
+    update_data = {
+        "first_name": "Jane",
+        "last_name": "Doe",
+        "email": "jane.doe@example.com",
+        "username": "janedoe"
+    }
+    update = forms.UserUpdate(**update_data)
+    assert isinstance(update, forms.UserUpdate)
+    assert update.first_name == "Jane"
+    assert update.last_name == "Doe"
+    assert update.email == "jane.doe@example.com"
+    assert update.username == "janedoe"
+
+def test_password_update_properties():
+    """Validates the PasswordUpdate schema's properties and constructor"""
+    update_data = {
+        "current_password": "OldPass123",
+        "password": "NewPass123",
+        "confirm_password": "NewPass123"
+    }
+    update = forms.PasswordUpdate(**update_data)
+
+    assert isinstance(update, forms.PasswordUpdate)
+    assert update.current_password == "OldPass123"
+    assert update.password == "NewPass123"
+    assert update.confirm_password == "NewPass123"
+
+def test_password_update_repeat():
+    """Checks PasswordUpdate error handling against identic updates"""
+    update_data = {
+        "current_password": "OldPass123",
+        "password": "OldPass123",
+        "confirm_password": "OldPass123"
+    }
+    with pytest.raises(ValueError, match="New password cannot match current password"):
+        forms.PasswordUpdate(**update_data)
