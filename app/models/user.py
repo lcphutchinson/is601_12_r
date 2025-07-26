@@ -261,7 +261,7 @@ class User(ModelBase):
         user_record = UserRecord.model_validate(user)
         auth_token = AuthToken(
             access_token=cls.create_access_token({"sub": str(user.id)}),
-            refresh_token=cld.create_refresh_token({"sub": str(user.id)}),
+            refresh_token=cls.create_refresh_token({"sub": str(user.id)}),
             token_type="bearer",
             user=user_record
         )

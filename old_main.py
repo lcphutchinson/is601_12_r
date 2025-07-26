@@ -43,7 +43,7 @@ class OperationResponse(BaseModel):
 class ErrorResponse(BaseModel):
     error: str = Field(..., description="Error message")
 
-# Custom Exception Handlers
+# ------------------------------------------------------------------------------# Custom Exception Handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     logger.error(f"HTTPException on {request.url.path}: {exc.detail}")

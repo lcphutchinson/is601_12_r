@@ -1,15 +1,19 @@
 import logging as logs
+import uvicorn
 
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
-from fastapi import Body, FastAPI, Depends, HTTPException, status
+from fastapi import Body, FastAPI, Depends, HTTPException, Request, status
+from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database_client import DatabaseClient
 from app.models.user import User
 from app.schemas.user import AuthToken, UserRecord
-from app.schemas.user_form import UserCreate, UserLogin
+from app.schemas.user_form import UserCreate, UserLoginForm
+
 
 # Logger Setup
 logs.basicConfig(level=logs.INFO)
@@ -32,9 +36,19 @@ app = FastAPI(
 )
 
 # ----------------------------------------
+# Root Endpoint
+# ----------------------------------------
+
+templates = Jinja2Templates(directory="templates")
+
+@app.get('/', response_class=HTMLResponse, tags=["web"])
+def get_homepage(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
+
+# ----------------------------------------
 # Health Endpoint
 # ----------------------------------------
-@app.get("/health", tags["health"])
+@app.get("/health", tags=["health"])
 def read_health():
     return {"status": "ok"}
 
@@ -68,7 +82,7 @@ def register(
 # ----------------------------------------
 @app.post("/auth/login", response_model=AuthToken, tags=["auth"])
 def login_json(
-        user_login: UserLogin,
+        user_login: UserLoginForm,
         db: Session = Depends(DatabaseClient().get_session)):
     """Login with JSON data, ex. from a login screen"""
     auth_result = User.authenticate(db, user_login.username, user_login.password)
