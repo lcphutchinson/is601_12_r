@@ -23,18 +23,22 @@ class User(ModelBase):
     __tablename__ = 'users'
 
     id          = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username    = Column(String(50), unique=True, nullable=False, index=True)
+    email       = Column(String(120), unique=True, nullable=False, index=True)
+    password    = Column(String(255), nullable=False)
+
     first_name  = Column(String(50), nullable=False)
     last_name   = Column(String(50), nullable=False)
-    email       = Column(String(120), unique=True, nullable=False)
-    username    = Column(String(50), unique=True, nullable=False)
-    password    = Column(String(255), nullable=False)
+    
     is_active   = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
-    last_login  = Column(DateTime, nullable=True)
+    
     created_at  = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at  = Column(DateTime, default=datetime.utcnow, 
         onupdate=datetime.utcnow, nullable=False
     )
+    last_login  = Column(DateTime, nullable=True)
+
     calculations = relationship(
         "Calculation",
         back_populates="user",
@@ -93,7 +97,7 @@ class User(ModelBase):
         Parameters
         ----------
         data: dict
-            a dictionary containing the a JWT token subject
+            a dictionary containing a JWT token subject
         expires_delta: Optional[timedelta]
             a time-to-live value for this token.
 
@@ -111,7 +115,35 @@ class User(ModelBase):
             to_encode, 
             settings.JWT_SECRET, 
             algorithm=settings.JWT_ALGORITHM
-        ) 
+        )
+
+    @staticmethod
+    def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        """
+        Creates a JWT refresh token.
+
+        Parameters
+        ----------
+        data: dict
+            a dictionary containing a JWT token subject
+        expires_delta: Optional[timedelta]
+            a time-to-live value for this token.
+
+        Returns
+        -------
+        str
+            An encoded jwt string
+        """
+        settings = GlobalSettings()
+        to_encode = data.copy()
+        expire = datetime.utcnow() + \
+            (expires_delta or timedelta(days=settings.REFRESH_TOKEN_TTL))
+        to_encode.update({"exp": expire})
+        return jwt.encode(
+            to_encode,
+            settings.JWT_REFRESH_SECRET,
+            algorithm=settings.JWT_ALGORITHM
+        )
 
     @staticmethod
     def verify_token(token: str) -> Optional[UUID]:
@@ -229,6 +261,7 @@ class User(ModelBase):
         user_record = UserRecord.model_validate(user)
         auth_token = AuthToken(
             access_token=cls.create_access_token({"sub": str(user.id)}),
+            refresh_token=cls.create_refresh_token({"sub": str(user.id)}),
             token_type="bearer",
             user=user_record
         )

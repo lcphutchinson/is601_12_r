@@ -22,6 +22,7 @@ class UserRecord(pyd.BaseModel):
 class AuthToken(pyd.BaseModel):
     """Auth Token schema for cookie passing"""
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
     user: UserRecord
 
