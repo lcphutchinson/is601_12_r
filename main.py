@@ -8,7 +8,10 @@ from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from typing import List
 
+import app.schemas.calculation as calcs
+from app.auth.dependencies import get_current_active_user
 from app.database_client import DatabaseClient
 from app.models.user import User
 from app.schemas.user import AuthToken, UserRecord
@@ -64,7 +67,7 @@ def read_health():
 def register(
         user_create: UserCreate,
         db: Session = Depends(DatabaseClient().get_session)):
-    user_data = user_create.dict(exclude={"confirm_password"})
+    user_data = user_create.dict() #.dict(exclude={"confirm_password"})
     try:
         user = User.register(db, user_data)
         db.commit()
@@ -116,7 +119,139 @@ def login_form(
 # ----------------------------------------
 # Calculation Endpoints
 # ----------------------------------------
+# CREATE
+@app.post(
+    "/calculations",
+    response_model=calcs.CalculationRecord,
+    status_code=status.HTTP_201_CREATED,
+    tags=['calculations'],
+)
+def create_calculation(
+    calc_data: calcs.CalculationForm,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(DatabaseClient().get_session)):
+    """Creates and inserts a Calculation record"""
+    try:
+        new_calculation = calcs.Calculation.create(
+            calc_type=calc_data.type,
+            user_id=current_user.id,
+            inputs=calc_data.inputs,
+        )
+        
+        db.add(new_calculation)
+        db.commit()
+        db.refresh(new_calculation)
+        return new_calculation
+    except ValueError as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
+# READ ALL
+@app.get(
+    "/calculations",
+    response_model=List[calcs.CalculationRecord],
+    tags=["calculations"],
+)
+def list_calculations(
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(DatabaseClient().get_session)):
+    calculations = db.query(calcs.Calculation).filter(
+        calcs.Calculation.user_id == current_user.id).all()
+    return calculations
+
+# READ ONE
+@app.get(
+    "/calculations/{calc_id}",
+    response_model=calcs.CalculationRecord,
+    tags=["calculations"]
+)
+def get_calculation(
+    calc_id: str,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(DatabaseClient().get_session)):
+    try:
+        calc_uuid = UUID(calc_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid calculation id format"
+        )
+    calculation = db.query(calc.Calculation).filter(
+        calcs.Calculation.id == calc_uuid,
+        calcs.Calculation.user_id == current_user_id
+    ).first()
+    if not calculation:
+        raise HTTPException(
+            status_code=404,
+            details="Calculation not found."
+        )
+    return calculation
+
+# UPDATE
+@app.put(
+    "/calculations/{calc_id}",
+    response_model=calcs.CalculationRecord,
+    tags=["calculations"]
+)
+def update_calculation(
+    calc_id: str,
+    calculation_update: calcs.CalculationUpdate,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(DatabaseClient().get_session)):
+    try:
+        calc_uuid = UUID(calc_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid calculation id format"
+        )
+    calculation = db.query(calcs.Calculation).filter(
+        calcs.Calculation.id == calc_uuid,
+        calcs.Calculation.user_id == current_user.id
+    ).first()
+    if not calculation:
+        raise HTTPException(
+            status_code=404,
+            detail="Calculation not found"
+        )
+    if calculation_update.inputs:
+        calculation.inputs = calculation_update.inputs
+    calculation.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(calculation)
+    return calculation
+
+# DELETE
+@app.delete(
+    "/calculation/{calc_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    tags=["calculations"]
+)
+def delete_calculation(
+    calc_id: str,
+    current_user = Depends(get_current_active_user),
+    db: Session = Depends(DatabaseClient().get_session)):
+    try:
+        calc_uuid = UUID(calc_id)
+    except ValueError:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid calculation id format"
+        )
+    calculation = db.query(calcs.Calculation).filter(
+        calcs.Calculation.id == calc_uuid,
+        calcs.Calculation.user_id == current_user.id
+    ).first()
+    if not calculation:
+        raise HTTPException(
+            status_code=404,
+            detail="Calculation not found"
+        )
+    db.delete(calculation)
+    db.commit()
 
 # ----------------------------------------
 # Launch Script

@@ -211,7 +211,7 @@ def fastapi_server():
             raise ServerStartupError("Failed to start test server")
 
         logger.info("Test server started successfully.")
-        yield
+        yield server_url
 
     except Exception as e:
         logger.error(f"Server error: {str(e)}")

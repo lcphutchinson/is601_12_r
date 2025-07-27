@@ -3,13 +3,17 @@
 import uuid
 
 from abc import abstractmethod
-from datetime import datetime as dt
+from datetime import datetime, timezone
 from functools import reduce
 from sqlalchemy import Column, DateTime, ForeignKey, JSON, String
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.orm import relationship
 
 from app import ModelBase
+
+def aware_now():
+    """Helper function that returns zimezone aware datetime.now"""
+    return datetime.now(timezone.utc)
 
 class Calculation(ModelBase):
     """Abstract Base Class for the Calculation family data model"""
@@ -20,8 +24,8 @@ class Calculation(ModelBase):
     user_id     = Column(PG_UUID(as_uuid=True), ForeignKey('users.id'), nullable=False)
     type        = Column(String(50), nullable=False)
     inputs      = Column(JSON, nullable=False)
-    created_at  = Column(DateTime, default=dt.utcnow, nullable=False)
-    updated_at  = Column(DateTime, default=dt.utcnow, onupdate=dt.utcnow, nullable=False)
+    created_at  = Column(DateTime, default=aware_now, nullable=False)
+    updated_at  = Column(DateTime, default=aware_now, onupdate=aware_now, nullable=False)
 
     user = relationship("User", back_populates="calculations")
 
