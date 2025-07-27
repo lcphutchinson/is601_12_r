@@ -2,7 +2,7 @@
 
 import uuid
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from pydantic import ValidationError
@@ -17,6 +17,10 @@ from app.database_client import DatabaseClient
 from app.schemas.user_form import UserCreate
 from app.schemas.user import UserRecord, AuthToken
 from app.settings import GlobalSettings
+
+def aware_now():
+    """Helper function that returns zimezone aware datetime.now"""
+    return datetime.now(timezone.utc)
 
 class User(ModelBase):
     _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -33,9 +37,9 @@ class User(ModelBase):
     is_active   = Column(Boolean, default=True, nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
     
-    created_at  = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at  = Column(DateTime, default=datetime.utcnow, 
-        onupdate=datetime.utcnow, nullable=False
+    created_at  = Column(DateTime, default=aware_now, nullable=False)
+    updated_at  = Column(DateTime, default=aware_now, 
+        onupdate=aware_now(), nullable=False
     )
     last_login  = Column(DateTime, nullable=True)
 
@@ -108,7 +112,7 @@ class User(ModelBase):
         """
         settings = GlobalSettings()
         to_encode = data.copy()
-        expire = datetime.utcnow() + \
+        expire = aware_now() + \
             (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_TTL))
         to_encode.update({"exp": expire})
         return jwt.encode(
@@ -136,7 +140,7 @@ class User(ModelBase):
         """
         settings = GlobalSettings()
         to_encode = data.copy()
-        expire = datetime.utcnow() + \
+        expire = aware_now() + \
             (expires_delta or timedelta(days=settings.REFRESH_TOKEN_TTL))
         to_encode.update({"exp": expire})
         return jwt.encode(
@@ -248,6 +252,7 @@ class User(ModelBase):
         Optional[Dict[str, Any]]
             An Authorization token for this user
         """
+        settings = GlobalSettings()
         user = db.query(cls).filter(
             (cls.username == username) | (cls.email == username)
         ).first()
@@ -255,7 +260,7 @@ class User(ModelBase):
         if not user or not user.verify_password(password):
             return None
 
-        user.last_login = datetime.utcnow()
+        user.last_login = aware_now()
         db.commit()
 
         user_record = UserRecord.model_validate(user)
@@ -263,7 +268,8 @@ class User(ModelBase):
             access_token=cls.create_access_token({"sub": str(user.id)}),
             refresh_token=cls.create_refresh_token({"sub": str(user.id)}),
             token_type="bearer",
-            expires_at=datetime.utcnow(),
+            expires_at=aware_now() + timedelta(
+                minutes=settings.ACCESS_TOKEN_TTL),
             user=user_record
         )
 

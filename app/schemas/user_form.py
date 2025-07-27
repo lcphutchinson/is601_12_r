@@ -29,7 +29,6 @@ class UserForm(pyd.BaseModel):
         example="janedoe",
         description="Username"
     )
-
     model_config = pyd.ConfigDict(from_attributes=True)
 
 class PasswordMixin(pyd.BaseModel):
@@ -40,24 +39,15 @@ class PasswordMixin(pyd.BaseModel):
         example="SecurePass123",
         description="Password"
     )
-    confirm_password: str = pyd.Field(
-        min_length=8,
-        max_length=128,
-        example="SecurePass123",
-        description="Confirm password"
-    )
 
     @pyd.model_validator(mode="before")
     @classmethod
     def validate_password(cls, values: dict) -> dict:
         password = values.get("password")
-        confirm_password = values.get("confirm_password")
         if not password:
             raise ValueError("Password is required")
         if len(password) < 8:
             raise ValueError("Password must contain at least 8 characters")
-        if password != confirm_password:
-            raise ValueError("Password inputs do not match")
         if not any(char.isupper() for char in password):
             raise ValueError("Password must contain at least one uppercase letter")
         if not any(char.islower() for char in password):
@@ -77,38 +67,42 @@ class UserLoginForm(PasswordMixin):
 
 class UserCreate(UserForm, PasswordMixin):
     """Formatted schema for User Create actions"""
-pass
+    confirm_password: str = pyd.Field(
+            min_length=8,
+            max_length=128,
+            example="SecurePass123",
+            description="Confirm password"
+    )
+    @pyd.model_validator(mode="after")
+    def validate_confirm_password(self) -> "UserCreate":
+        if self.password != self.confirm_password:
+            raise ValueError("Password inputs do not match")
+        return self
    
 class UserUpdate(pyd.BaseModel):
     """Schema for User update forms"""
-    first_name: Optional[str] = pyd.Field(
-        None,
+    first_name: str = pyd.Field(
         min_length=1,
         max_length=50,
         example="Jane",
         description="First name"
     )
-    last_name: Optional[str] = pyd.Field(
-        None,
+    last_name: str = pyd.Field(
         min_length=1,
         max_length=50,
         example="Doe",
         description="Last name"
     )
-    email: Optional[str] = pyd.Field(
-        None,
+    email: pyd.EmailStr = pyd.Field(
         example="jane.doe@example.com",
         description="Email address"
     )
-    username: Optional[str] = pyd.Field(
-        None,
+    username: str = pyd.Field(
         min_length=3,
         max_length=50,
         example="janedoe",
         description="Username"
     )
-
-    model_config = pyd.ConfigDict(from_attributes=True)
     
 class PasswordUpdate(PasswordMixin):
     """Schema for User password updates"""
@@ -119,9 +113,18 @@ class PasswordUpdate(PasswordMixin):
         example="OldPass123",
         description="Current password"
     )
+    confirm_password: str = pyd.Field(
+        ...,
+        min_length=8,
+        max_length=128,
+        example="SecurePass123",
+        description="Confirm password"
+    )
 
     @pyd.model_validator(mode='after')
     def validate_new_password(self) -> "PasswordUpdate":
+        if self.password != self.confirm_password:
+            raise ValueError("Password inputs do not match")
         if self.current_password == self.password:
             raise ValueError("New password cannot match current password")
         return self

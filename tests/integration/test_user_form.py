@@ -34,11 +34,10 @@ def test_email_constraint():
 
 def test_password_mixin_properties():
     """Validates PasswordMixin object properties and contructor"""
-    data = {"password": "SecurePass123", "confirm_password": "SecurePass123"}
+    data = {"password": "SecurePass123"}
     password_mixin = forms.PasswordMixin(**data)
     assert isinstance(password_mixin, forms.PasswordMixin)
     assert password_mixin.password == "SecurePass123"
-    assert password_mixin.confirm_password == "SecurePass123"
 
 @pytest.mark.parametrize(
     "data, expected",
